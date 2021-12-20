@@ -18,6 +18,8 @@ contract NaiveReceiverLenderPool is ReentrancyGuard {
         return FIXED_FEE;
     }
 
+    //Passing in the receiver's address along with a 0 borrow amount and the high fee will drain the
+    //receiver's account in no time
     function flashLoan(address borrower, uint256 borrowAmount) external nonReentrant {
 
         uint256 balanceBefore = address(this).balance;

