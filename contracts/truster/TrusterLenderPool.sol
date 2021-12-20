@@ -33,6 +33,8 @@ contract TrusterLenderPool is ReentrancyGuard {
         require(balanceBefore >= borrowAmount, "Not enough tokens in pool");
         
         damnValuableToken.transfer(borrower, borrowAmount);
+        // So the pool will call us an any function on any address, why not call the approve function
+        // from IERC20
         target.functionCall(data);
 
         uint256 balanceAfter = damnValuableToken.balanceOf(address(this));
