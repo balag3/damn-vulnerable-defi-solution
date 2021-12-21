@@ -26,6 +26,7 @@ contract SideEntranceLenderPool {
         payable(msg.sender).sendValue(amountToWithdraw);
     }
 
+    //The receipt is easy : take a flash loan, deposit back into the pool, pass the balance check, withdraw the moneyz.
     function flashLoan(uint256 amount) external {
         uint256 balanceBefore = address(this).balance;
         require(balanceBefore >= amount, "Not enough ETH in balance");
@@ -35,4 +36,3 @@ contract SideEntranceLenderPool {
         require(address(this).balance >= balanceBefore, "Flash loan hasn't been paid back");        
     }
 }
- 
