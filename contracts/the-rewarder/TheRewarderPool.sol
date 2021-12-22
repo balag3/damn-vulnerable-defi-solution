@@ -62,6 +62,8 @@ contract TheRewarderPool {
         require(liquidityToken.transfer(msg.sender, amountToWithdraw));
     }
 
+    // Thanks god it does not check when we deposited the token, only a relative time delay check
+    // So we can just deposit and collect reward if more than 5 days passed since the last round
     function distributeRewards() public returns (uint256) {
         uint256 rewards = 0;
 

