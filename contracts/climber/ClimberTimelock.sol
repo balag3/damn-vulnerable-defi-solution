@@ -83,7 +83,6 @@ contract ClimberTimelock is AccessControl {
 
         bytes32 id = getOperationId(targets, values, dataElements, salt);
         require(getOperationState(id) == OperationState.Unknown, "Operation already known");
-        
         operations[id].readyAtTimestamp = uint64(block.timestamp) + delay;
         operations[id].known = true;
     }
@@ -100,11 +99,10 @@ contract ClimberTimelock is AccessControl {
         require(targets.length == dataElements.length);
 
         bytes32 id = getOperationId(targets, values, dataElements, salt);
-
+        //here we can execute first the schedule function, since state only checked after the external call!
         for (uint8 i = 0; i < targets.length; i++) {
             targets[i].functionCallWithValue(dataElements[i], values[i]);
         }
-        
         require(getOperationState(id) == OperationState.ReadyForExecution);
         operations[id].executed = true;
     }
@@ -115,5 +113,5 @@ contract ClimberTimelock is AccessControl {
         delay = newDelay;
     }
 
-    receive() external payable {}
+receive() external payable {}
 }
