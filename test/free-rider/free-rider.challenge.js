@@ -114,10 +114,7 @@ describe('[Challenge] Free Rider', function () {
                 this.nft.address,
                 this.buyerContract.address);
 
-        await attackerContract.connect(attacker).getFlashSwap(
-            ethers.utils.parseEther('15'),
-            {value: ethers.utils.parseEther('0.45'), gasLimit: 1e6}
-            );
+        await attackerContract.connect(attacker).attack(ethers.utils.parseEther('15'));
     });
 
     after(async function () {
