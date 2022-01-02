@@ -43,7 +43,7 @@ contract FreeRiderBuyer is ReentrancyGuard, IERC721Receiver {
         require(nft.ownerOf(_tokenId) == address(this));
         
         received++;
-        if(received == 6) {            
+        if(received == 6) {
             payable(partner).sendValue(JOB_PAYOUT);
         }            
 

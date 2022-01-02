@@ -8,6 +8,7 @@ describe('[Challenge] Climber', function () {
     const VAULT_TOKEN_BALANCE = ethers.utils.parseEther('10000000');
 
     before(async function () {
+        this.timeout(20000);
         /** SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE */
         [deployer, proposer, sweeper, attacker] = await ethers.getSigners();
 
@@ -51,8 +52,11 @@ describe('[Challenge] Climber', function () {
         await this.token.transfer(this.vault.address, VAULT_TOKEN_BALANCE);
     });
 
-    it('Exploit', async function () {        
-        /** CODE YOUR EXPLOIT HERE */
+    it('Exploit', async function () {
+        this.attackerContract  = await (await ethers.getContractFactory('ClimberAttacker', attacker)).deploy(
+            this.timelock.address
+        );
+        const tx = await this.attackerContract.connect(attacker).attack({value: ethers.utils.parseEther('0.01')});
     });
 
     after(async function () {

