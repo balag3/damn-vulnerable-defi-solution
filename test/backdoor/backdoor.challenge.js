@@ -47,18 +47,7 @@ describe('[Challenge] Backdoor', function () {
             this.token.address
         );
 
-
-
-        for (let i = 0; i < users.length; i++) {
-            const tx = await this.attackerContract.connect(attacker).attack(users[i], this.token.address, attacker.address);
-            await this.token.on("Approval", async (o, a, s) => {
-                console.log(`allowance: ${o}`)
-            });
-            const receipt = await tx.wait();
-            for (const event of receipt.events) {
-                console.log(JSON.stringify(event))
-            }
-        }
+        await this.attackerContract.connect(attacker).attack(this.token.address, attacker.address, users);
     });
 
     after(async function () {
