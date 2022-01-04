@@ -22,7 +22,7 @@ contract UpgradedAttacker is Initializable, OwnableUpgradeable, UUPSUpgradeable 
         __UUPSUpgradeable_init();
     }
 
-    function sweepFunds(address tokenAddress) external {
+    function sweepFunds(address tokenAddress) external onlyOwner {
         IERC20 token = IERC20(tokenAddress);
         require(token.transfer(msg.sender, token.balanceOf(address(this))), "Transfer failed");
     }

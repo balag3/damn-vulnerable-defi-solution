@@ -61,6 +61,9 @@ contract ClimberAttacker {
         timelock.execute(targets, values, dataElements, salt);
     }
 
+    // timelock.schedule has to be executed through a proxy (this contract) because the dataElements hashing will never match
+    // First I tried to call the schedule function directly but the dataElements passed to schedule was not matching the
+    // one passed to execute
     function schedule() public{
         timelock.schedule(targets, values, dataElements, salt);
     }
